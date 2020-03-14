@@ -23,13 +23,48 @@ import urllib
 import argparse
 
 
+# LAB(begin solution)
+def url_sort_key(url):
+    """Used to order the urls in increasing order by 2nd word if present."""
+    match = re.search(r'-(\w+)-(\w+)\.\w+', url)
+    if match:
+        return match.group(2)
+    else:
+        return url
+# LAB(end solution)
+
+
 def read_urls(filename):
     """Returns a list of the puzzle urls from the given log file,
     extracting the hostname from the filename itself.
     Screens out duplicate urls and returns the urls sorted into
     increasing order."""
     # +++your code here+++
-    pass
+    # LAB(begin solution)
+    # Extract the hostname from the filename
+    underbar = filename.index('_')
+    host = filename[underbar + 1:]
+
+    # Store the ulrs into a dict to screen out the duplicates
+    url_dict = {}
+
+    with open(filename) as f:
+        for line in f:
+            # Find the path which is after the GET and surrounded by spaces.
+            match = re.search(r'"GET (\S+)', line)
+            # Above uses \S (upper case S) which is any non-space char
+            # Alternately could use square brackets: "GET ([^ ]+)"
+            # or the ? form: "GET (.+?) "
+
+            if match:
+                path = match.group(1)
+            # Add to dict if it's a special "puzzle" url
+            # (could combine this 'puzzle' check with the above GET extraction)
+            if 'puzzle' in path:
+                url_dict['http://' + host + path] = 1
+
+    return sorted(url_dict.keys(), key=url_sort_key)
+    # LAB(end solution)
 
 
 def download_images(img_urls, dest_dir):
@@ -41,13 +76,43 @@ def download_images(img_urls, dest_dir):
     Creates the directory if necessary.
     """
     # +++your code here+++
-    pass
+    # LAB(begin solution)
+    # Check to see if the directory exists. If not, create it.
+    if not os.path.exists(dest_dir):
+        os.makedirs(dest_dir)
+
+    # Create an index.html
+    index = open(os.path.join(dest_dir, 'index.html'), 'w')
+    index.write('<html><body>\n')
+
+    # Download the images into the destination dir
+    for i in range(len(img_urls)):
+        # build image name string
+        img_name = "img" + str(i)
+
+        # build image path string
+        img_link = os.path.join(dest_dir, img_name)
+
+        # Print a status for each img
+        print("Retrieving " + img_name + "...")
+
+        # Download each image to the destination dir
+        urllib.urlretrieve(img_urls[i], img_link)
+
+        # Add the image to the index.html file
+        index.write('<img src="' + img_name + '">')
+
+    # Wrap up the index file
+    index.write("\n</body>\n</html>")
+    index.close()
+    # LAB(end solution)
 
 
 def create_parser():
     """Create an argument parser object"""
     parser = argparse.ArgumentParser()
-    parser.add_argument('-d', '--todir',  help='destination directory for downloaded images')
+    parser.add_argument(
+        '-d', '--todir',  help='destination directory for downloaded images')
     parser.add_argument('logfile', help='apache logfile to extract urls from')
 
     return parser
@@ -73,3 +138,6 @@ def main(args):
 
 if __name__ == '__main__':
     main(sys.argv[1:])
+
+# python logpuzzle.py --todir animaldir animal_code.google.com
+# python logpuzzle.py --todir placedir place_code.google.com
